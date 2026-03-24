@@ -216,6 +216,8 @@ def start(my_handler, url, save_cache=False, forceDownload=False, include_images
         '--non-interactive',
         url
     ]
+    if include_images != "false":
+        options.insert(0, '--update-cover')
     if save_cache:
         options.insert(0, '--save-cache')
     if forceDownload:
