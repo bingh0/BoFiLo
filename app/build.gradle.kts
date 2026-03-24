@@ -1,4 +1,7 @@
 import com.android.build.api.dsl.ApplicationExtension
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -44,6 +47,13 @@ val gVersionCode = 10
 val gVersion = "$gVersionCode.${"%04d".format(gVersionBuild)}"
 logger.info("Building Version {}", version)
 
+val targetAbis = (findProperty("targetAbis") as String?)
+    ?.split(',')
+    ?.map { it.trim() }
+    ?.filter { it.isNotEmpty() }
+    ?: listOf("arm64-v8a", "x86_64")
+val universalApkEnabled = (findProperty("universalApk") as String?)?.toBoolean() ?: true
+
 base {
     archivesName = "BoFiLo_v$gVersion"
 }
@@ -65,13 +75,13 @@ configure<ApplicationExtension> {
             abi {
                 isEnable = true
                 reset()
-                include("arm64-v8a", "x86_64")
-                isUniversalApk = true
+                include(*targetAbis.toTypedArray())
+                isUniversalApk = universalApkEnabled
             }
         }
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters += targetAbis
         }
     }
 
@@ -116,6 +126,7 @@ configure<ApplicationExtension> {
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -139,16 +150,29 @@ configure<ApplicationExtension> {
 }
 
 kotlin {
+    jvmToolchain(17)
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
     }
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 chaquopy {
     defaultConfig {
-        version = "3.12"
-        if (file("../venv/bin/python").isFile) {
-            buildPython = listOf("../venv/bin/python")
+        version = "3.13"
+        if (file("../.venv/bin/python").isFile) {
+            buildPython = listOf("../.venv/bin/python")
         }
         pip {
             install("-r", "requirements.txt")

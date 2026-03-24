@@ -1,3 +1,2 @@
---extra-index-url https://testpypi.python.org/pypi
 FanFicFare==4.55.0
 Pillow
