@@ -51,6 +51,7 @@ base {
 configure<ApplicationExtension> {
     namespace = "eu.schnuff.bofilo"
     compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "eu.schnuff.bofilo"
@@ -144,9 +145,9 @@ kotlin {
 
 chaquopy {
     defaultConfig {
-        version = "3.12"
-        if (file("../venv/bin/python").isFile) {
-            buildPython = listOf("../venv/bin/python")
+        version = "3.13"
+        listOf("../.venv/bin/python", "../venv/bin/python").firstOrNull { file(it).isFile }?.let {
+            buildPython = listOf(it)
         }
         pip {
             install("-r", "requirements.txt")
