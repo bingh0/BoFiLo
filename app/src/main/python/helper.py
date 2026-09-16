@@ -52,9 +52,9 @@ class Handler:
     def __init__(self, url: str):
         self.chapters_now = 0
         self.chapters_max = None
-        self.title = None
+        self._title = None
         self.url = url
-        self.filename = None
+        self._filename = None
         self.output = ''
         self.is_finished = False
 
@@ -69,7 +69,7 @@ class Handler:
     def get_login(self, password_only: bool = False):
         raise ValueError('no [password, username] supplied.')
 
-    def web_request(self, method, url, **kargs):
+    def web_request(self, method, url, kargs=None):
         print('can not perform web request "%s" for url "%s", args: ' % (method, url), kargs)
         raise NotImplementedError('can not perform web request "%s" for url "%s" [args: %s]' % (method, url, str(kargs)))
 
@@ -78,6 +78,12 @@ class Handler:
 
     def start(self, url: str):
         pass
+
+    def title(self, value: str):
+        self._title = value
+
+    def filename(self, value: str):
+        self._filename = value
 
     def add_output(self, txt: str):
         self.output += txt
@@ -92,14 +98,14 @@ class MyStory(object):
         self.story = story
         self.handler = get_handler()
 
-    def addChapter(self, chap, newchap=False):
-        self.story.addChapter(chap, newchap)
+    def addChapter(self, *args, **kwargs):
+        self.story.addChapter(*args, **kwargs)
         # print('story Chapter %d / %d' % (len(self.story.chapters), self.story.getChapterCount()))
         if self.handler:
             self.handler.chapters(len(self.story.chapters), self.story.getChapterCount())
 
-    def setMetadata(self, key, value, condremoveentities=True):
-        self.story.setMetadata(key, value, condremoveentities)
+    def setMetadata(self, key, value, *args, **kwargs):
+        self.story.setMetadata(key, value, *args, **kwargs)
         if self.handler:
             if key == 'numChapters':
                 self.handler.chapters(0, self.story.getChapterCount())
@@ -107,8 +113,8 @@ class MyStory(object):
                 self.handler.title(value)
                 # print("Story Chapter count: %d" % self._maxChapterCount)
 
-    def formatFileName(self, template, allowunsafefilename=True):
-        filename = self.story.formatFileName(template, allowunsafefilename)
+    def formatFileName(self, *args, **kwargs):
+        filename = self.story.formatFileName(*args, **kwargs)
         if self.handler:
             self.handler.filename(filename)
         return filename
@@ -131,10 +137,10 @@ class MyAdapter(object):
         self.adapter = adapter
         self.handler = get_handler()
 
-    def getStoryMetadataOnly(self, get_cover=True):
+    def getStoryMetadataOnly(self, *args, **kwargs):
         for _ in range(0, 2 if self.handler else 1):
             try:
-                return self.adapter.getStoryMetadataOnly(get_cover)
+                return self.adapter.getStoryMetadataOnly(*args, **kwargs)
             except fanficfare.cli.exceptions.FailedToLogin as f:
                 if not self.handler:
                     raise f
