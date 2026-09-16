@@ -1,15 +1,12 @@
 package eu.schnuff.bofilo
 
-import android.Manifest
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -21,11 +18,8 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
-import com.gun0912.tedpermission.PermissionListener
-import com.gun0912.tedpermission.normal.TedPermission
 import eu.schnuff.bofilo.utils.Helpers.copyFile
 import eu.schnuff.bofilo.databinding.ActivitySettingsBinding
-import eu.schnuff.bofilo.utils.Helpers
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
@@ -94,7 +88,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         private fun persistDirToSettings(settingName: String, uri: Uri) {
-            // I have no idea where the file is on the filesystem (if it is even there and not in the cloud)
+            // The folder is only ever reached through the Storage Access Framework; the persisted
+            // tree permission is all the access the app needs.
             DocumentFile.fromTreeUri(requireContext().applicationContext, uri)?.let {
                 // Make access to the "default directory" permanent
                 val takeFlags: Int = (Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -109,43 +104,6 @@ class SettingsActivity : AppCompatActivity() {
                 }
 
                 setSummary()
-            }
-
-            val externPath = Helpers.FileInformation.getPath(requireContext(), uri)
-            if (externPath != null) {
-                // I found the file on the filesystem.
-                // request permission to access it.
-                Log.d(TAG, "Extern path found, now requesting permissions.")
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    TedPermission.create()
-                        //.with(requireContext())
-                        .setPermissionListener(object : PermissionListener {
-                            override fun onPermissionGranted() {
-                                sharedPreferences.edit(true) {
-                                    putString(
-                                        settingName,
-                                        Uri.fromFile(File(externPath)).toString()
-                                    )
-                                }
-
-                                setSummary()
-                            }
-
-                            override fun onPermissionDenied(deniedPermissions: MutableList<String>?) {}
-                        })
-                        .setRationaleMessage(R.string.permission_rationale)
-                        .setDeniedMessage(R.string.permission_denied)
-                        .setPermissions(
-                            Manifest.permission.READ_EXTERNAL_STORAGE,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        ).check()
-                } else {
-                    sharedPreferences.edit(true) {
-                        putString(settingName, Uri.fromFile(File(externPath)).toString())
-                    }
-
-                    setSummary()
-                }
             }
         }
 
@@ -169,9 +127,7 @@ class SettingsActivity : AppCompatActivity() {
             personaliniPreference.setOnPreferenceClickListener {
                 val myIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
-                    putExtra(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        DocumentsContract.EXTRA_INITIAL_URI else "android.provider.extra.INITIAL_URI",
-                        MediaStore.Files.getContentUri("external"))
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, MediaStore.Files.getContentUri("external"))
 
                     type = Constants.MIME_INI
                 }

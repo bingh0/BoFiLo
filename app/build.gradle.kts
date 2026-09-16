@@ -165,7 +165,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.concurrent)
     ksp(libs.androidx.room.compiler)
-    implementation(libs.tedpermission.normal)
     implementation(libs.material)
     implementation(libs.androidx.documentsfiles)
     testImplementation(libs.junit)

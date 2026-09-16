@@ -13,7 +13,7 @@ Download apk from ![](app/src/main/res/drawable-mdpi/ic_notification_download.pn
 
 ### Usage hints:
 
-- For "Default folder" use some folder in "internal storage" or use "downloads" for best speed
+- "Default folder" can be any folder you pick in the system file picker; the app only uses the access you grant there
 - If no "Default folder" is supplied all Epubs will be saved in the "cache" directory of the app.
 - The Icon in the bottom right of the main screen starts downloading Epubs for testing purposes
 
