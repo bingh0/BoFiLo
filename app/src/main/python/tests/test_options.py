@@ -26,7 +26,6 @@ def test_default_is_epub_update(cli_main):
     assert '--update-epub' in opts and '--non-interactive' in opts and '--progressbar' in opts
     assert '-U' not in opts and '--force' not in opts and '--save-cache' not in opts
     assert kwargs['passed_defaultsini'] == helper.default_ini
-    assert kwargs['passed_personalini'] is helper.personal_ini
 
 
 def test_force_download_uses_U_and_force(cli_main):
@@ -90,3 +89,37 @@ def test_unnew_options(cli_main):
     opts, kwargs = _options(cli_main)
     assert opts == ['--unnew', '/tmp/x.epub']
     assert kwargs['passed_defaultsini'] == helper.default_ini
+
+
+# --- include_images -----------------------------------------------------------
+# FanFicFare's --update-epub sets never_make_cover unless --update-cover is
+# also given, so the flag must accompany any non-"false" setting.
+
+@pytest.mark.parametrize('value', ['coveronly', 'true'])
+def test_images_enabled_adds_update_cover(cli_main, value):
+    helper.start(Handler('u'), 'https://example.com/s', include_images=value)
+    opts, kwargs = _options(cli_main)
+    assert '--update-cover' in opts
+    assert 'include_images: %s' % value in kwargs['passed_personalini']
+
+
+def test_images_disabled_is_the_default(cli_main):
+    helper.start(Handler('u'), 'https://example.com/s')
+    opts, kwargs = _options(cli_main)
+    assert '--update-cover' not in opts
+    assert 'include_images: false' in kwargs['passed_personalini']
+
+
+def test_app_setting_precedes_personal_ini(cli_main, tmp_path):
+    """The app's value is written first so the user's personal.ini still wins."""
+    ini = tmp_path / 'personal.ini'
+    ini.write_text('[defaults]\ninclude_images: true\n')
+    old = helper.personal_ini
+    try:
+        helper.read_personal_ini(str(ini))
+        helper.start(Handler('u'), 'https://example.com/s', include_images='false')
+        _, kwargs = _options(cli_main)
+        text = kwargs['passed_personalini']
+        assert text.index('include_images: false') < text.index('include_images: true')
+    finally:
+        helper.personal_ini = old
