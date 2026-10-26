@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit
 
 object StoryDownloadGeckoHelper {
     private const val CHANNEL_INTERACTION_ID = "StoryDownloadInteraction"
+    private const val ANUBIS_TIMEOUT_MS = 60_000L
 
     lateinit var globalGeckoSession: GeckoSession
     private lateinit var geckoRuntime: GeckoRuntime
@@ -129,6 +130,7 @@ object StoryDownloadGeckoHelper {
     fun webRequest(context: Context, method: String, url: String): String {
         queue.clear()
         webRequestGet(context, method, url)
+        var anubisSince = 0L
 
         while (true) {
             val ret = queue.poll(500, TimeUnit.MILLISECONDS)
@@ -138,11 +140,22 @@ object StoryDownloadGeckoHelper {
                 continue
             }
 
+            // Anubis (RoyalRoad) solves its proof of work in the page and then
+            // reloads the real page by itself. If that stalls, let the user look.
+            if (anubisSince > 0 && System.currentTimeMillis() - anubisSince > ANUBIS_TIMEOUT_MS) {
+                createNotification(context, url)
+                anubisSince = 0L
+            }
+
             if (ret.isNullOrEmpty())
                 continue
 
             if (ret.contains("<body class=\"no-js\">")) {
                 createNotification(context, url)
+            } else if (ret.contains("id=\"anubis_challenge\"")) {
+                Log.d(this::class.simpleName, "Anubis challenge for $url, waiting for it to pass")
+                if (anubisSince == 0L)
+                    anubisSince = System.currentTimeMillis()
             } else {
 //                if (
 //                ret.contains("| FanFiction</title>") ||

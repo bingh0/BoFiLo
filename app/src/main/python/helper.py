@@ -29,6 +29,7 @@ import fanficfare.fetchers.base_fetcher
 import fanficfare.cli
 import os
 import threading
+from urllib.parse import urlparse
 
 # read defaults.ini
 with open(os.path.dirname(fanficfare.__file__) + '/defaults.ini', 'r', encoding="utf-8") as f:
@@ -168,6 +169,11 @@ class MyAdapter(object):
         return getattr(self.adapter, attr)
 
 
+# Sites whose pages are loaded through GeckoView (Kotlin web_request) because
+# they sit behind JavaScript bot checks: Cloudflare, and Anubis on RoyalRoad.
+GECKO_DOMAINS = ['www.fanfiction.net', 'archiveofourown.org', 'www.royalroad.com']
+
+
 class MyFetcher(fanficfare.fetchers.fetcher_requests.RequestsFetcher):
     def __init__(self, get_config_fn, get_config_list_fn):
         super(MyFetcher, self).__init__(get_config_fn, get_config_list_fn)
@@ -175,8 +181,9 @@ class MyFetcher(fanficfare.fetchers.fetcher_requests.RequestsFetcher):
 
     def request(self, *args, **kargs):
         # print("Fetcher request fetcher.request(%s, %s)" % (str(args), str(kargs)))
-        url = args[1]
-        if isinstance(url, str) and (url.startswith('https://www.fanfiction.net/') or url.startswith('https://archiveofourown.org/')):
+        method, url = args[0], args[1]
+        # GeckoView can only load pages, so POSTs (e.g. site logins) stay native.
+        if method == 'GET' and isinstance(url, str) and urlparse(url).hostname in GECKO_DOMAINS:
             # print("request for '" + url + "' handled by custom fetcher.")
             ret = fanficfare.fetchers.base_fetcher.FetcherResponse(
                 self.handler.web_request(args[0], args[1], kargs),
@@ -203,7 +210,7 @@ class MyFetcher(fanficfare.fetchers.fetcher_requests.RequestsFetcher):
 # This function wraps the adapter and story
 def my_get_adapter(config, url, anyurl=False):
     adapter = originalGetAdapter(config, url, anyurl)
-    if adapter.getSiteDomain() in ['www.fanfiction.net', 'archiveofourown.org']:
+    if adapter.getSiteDomain() in GECKO_DOMAINS:
         print("Site is " + adapter.getSiteDomain() + ", injecting custom fetcher.")
         config.fetcher = MyFetcher(config.getConfig, config.getConfigList)
     if get_handler():

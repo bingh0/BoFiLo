@@ -152,17 +152,24 @@ def _fetcher():
 
 
 @pytest.mark.parametrize('url', ['https://archiveofourown.org/works/1',
-                                 'https://www.fanfiction.net/s/1/1/x'])
-def test_fetcher_routes_ao3_and_ffnet_to_handler(rec, url):
+                                 'https://www.fanfiction.net/s/1/1/x',
+                                 'https://www.royalroad.com/fiction/1/x/chapter/2/y'])
+def test_fetcher_routes_gecko_sites_to_handler(rec, url):
     resp = _fetcher().request('GET', url, headers={})
     assert resp.content == '<html>served by handler</html>'
     assert ('web', 'GET', url) in rec.events
 
 
-def test_fetcher_leaves_other_sites_to_requests(rec):
+@pytest.mark.parametrize('method, url', [
+    ('GET', 'https://www.royalroadcdn.com/public/covers-large/1.jpg'),
+    ('GET', 'https://example.com/s/1'),
+    # GeckoView only does page loads; a site login POST must not go to it.
+    ('POST', 'https://www.royalroad.com/account/login'),
+])
+def test_fetcher_leaves_other_requests_to_requests(rec, method, url):
     with mock.patch.object(helper.fanficfare.fetchers.fetcher_requests.RequestsFetcher, 'request',
                            return_value='native') as native:
-        assert _fetcher().request('GET', 'https://www.royalroad.com/fiction/1') == 'native'
+        assert _fetcher().request(method, url) == 'native'
     native.assert_called_once()
     assert not [e for e in rec.events if e[0] == 'web']
 
@@ -180,7 +187,8 @@ def test_get_adapter_injects_fetcher_only_for_gecko_sites(rec):
         def getSiteDomain(self):
             return self.domain
 
-    for domain, injected in [('archiveofourown.org', True), ('www.royalroad.com', False)]:
+    for domain, injected in [('archiveofourown.org', True), ('www.royalroad.com', True),
+                             ('www.wattpad.com', False)]:
         cfg = Config()
         with mock.patch.object(helper, 'originalGetAdapter', return_value=Adapter(domain)):
             wrapped = helper.my_get_adapter(cfg, 'https://%s/x' % domain)
