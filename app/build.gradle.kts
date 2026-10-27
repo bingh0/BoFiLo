@@ -63,7 +63,7 @@ configure<ApplicationExtension> {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
@@ -105,18 +105,10 @@ configure<ApplicationExtension> {
         }
     }
 
-    splits {
-        abi {
-            isEnable = gradle.startParameter.taskNames.any { it.contains("Release") }
-            reset()
-            include("arm64-v8a", "x86_64")
-            isUniversalApk = true
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
